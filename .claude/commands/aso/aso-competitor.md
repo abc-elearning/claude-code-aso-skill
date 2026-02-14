@@ -21,6 +21,23 @@ Deep-dive competitive intelligence to identify what competitors are doing well a
 
 Use `auto` to automatically discover top 5 competitors in the category.
 
+## Region Targeting
+
+Specify your target market for region-specific analysis:
+
+```bash
+/aso-competitor FitFlow "Todoist,Any.do" --region jp
+```
+
+Supported: Any App Store territory code (us, gb, jp, kr, de, fr, br, au, cn, in, etc.)
+Default: us (United States)
+
+Region affects:
+- iTunes API data (competitor rankings, ratings specific to that market)
+- Keyword competition levels (varies by region)
+- Competitor landscape (different top apps per region)
+- Review analysis (region-specific user reviews)
+
 ## What This Command Does
 
 Invokes **aso-research** in competitor-analysis mode to:
@@ -54,6 +71,7 @@ Creates `outputs/[app-name]/01-research/` with:
 - App name and category
 - Competitor names (or "auto" to discover)
 - Platform (Apple or Google)
+- Target region/market (e.g., us, jp, de, kr, br, au, fr, cn) - defaults to "us" if not specified
 
 ## Example
 

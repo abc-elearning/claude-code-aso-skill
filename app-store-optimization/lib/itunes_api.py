@@ -6,6 +6,7 @@ Documentation: https://developer.apple.com/library/archive/documentation/AudioVi
 """
 
 import json
+import time
 import urllib.parse
 import urllib.request
 from typing import Dict, List, Any, Optional
@@ -15,6 +16,7 @@ class iTunesAPI:
     """Wrapper for iTunes Search API to fetch app store data."""
 
     BASE_URL = "https://itunes.apple.com/search"
+    REVIEW_RSS_URL = "https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json"
 
     def __init__(self, country: str = "us"):
         """
@@ -218,6 +220,74 @@ class iTunesAPI:
 
         return results
 
+    def fetch_reviews(
+        self,
+        app_id: str,
+        pages: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch app reviews using iTunes RSS JSON endpoint.
+
+        Args:
+            app_id: Apple App Store ID (e.g., "585829637" for Todoist)
+            pages: Number of pages to fetch (1-10, ~50 reviews per page)
+
+        Returns:
+            List of review dictionaries with keys:
+            {author, rating, title, body, version, date}
+        """
+        reviews = []
+        pages = min(pages, 10)  # Max 10 pages
+
+        for page in range(1, pages + 1):
+            url = self.REVIEW_RSS_URL.format(
+                country=self.country,
+                page=page,
+                app_id=app_id
+            )
+
+            try:
+                req = urllib.request.Request(url)
+                req.add_header('User-Agent', 'Mozilla/5.0')
+                with urllib.request.urlopen(req, timeout=15) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+
+                entries = data.get('feed', {}).get('entry', [])
+                if not entries:
+                    break
+
+                for entry in entries:
+                    # Skip the first entry on page 1 (it's app metadata, not a review)
+                    if 'im:rating' not in entry:
+                        continue
+
+                    review = {
+                        'author': entry.get('author', {}).get('name', {}).get('label', 'Unknown'),
+                        'rating': int(entry.get('im:rating', {}).get('label', '0')),
+                        'title': entry.get('title', {}).get('label', ''),
+                        'body': entry.get('content', {}).get('label', ''),
+                        'version': entry.get('im:version', {}).get('label', ''),
+                        'date': entry.get('updated', {}).get('label', ''),
+                        'id': entry.get('id', {}).get('label', ''),
+                    }
+                    reviews.append(review)
+
+                # Rate limiting: 3 seconds between calls (~20 calls/min)
+                if page < pages:
+                    time.sleep(3)
+
+            except urllib.error.URLError as e:
+                print(f"Warning: Failed to fetch reviews page {page}: {str(e)}")
+                break
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Warning: Failed to parse reviews page {page}: {str(e)}")
+                break
+            except Exception as e:
+                print(f"Warning: Unexpected error fetching page {page}: {str(e)}")
+                break
+
+        return reviews
+
 
 def fetch_competitor_data(
     competitor_names: List[str],
@@ -235,6 +305,26 @@ def fetch_competitor_data(
     """
     api = iTunesAPI(country=country)
     return api.compare_competitors(competitor_names)
+
+
+def fetch_app_reviews(
+    app_id: str,
+    country: str = "us",
+    pages: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Convenience function to fetch app reviews.
+
+    Args:
+        app_id: Apple App Store ID
+        country: Country code
+        pages: Number of pages (1-10)
+
+    Returns:
+        List of review dictionaries
+    """
+    api = iTunesAPI(country=country)
+    return api.fetch_reviews(app_id, pages=pages)
 
 
 def main():
@@ -278,6 +368,15 @@ def main():
     print(f"Compared {len(comparison)} apps:")
     for comp in comparison:
         print(f"  - {comp['app_name']}: {comp['rating']}★ ({comp['ratings_count']:,} ratings)")
+
+    # Test 5: Fetch reviews
+    print("\nTest 5: Fetching reviews for Todoist...")
+    reviews = api.fetch_reviews("585829637", pages=1)
+    print(f"Fetched {len(reviews)} reviews")
+    if reviews:
+        first = reviews[0]
+        print(f"  First review: {first['rating']}★ - {first['title'][:50]}")
+        print(f"  By: {first['author']}, Version: {first['version']}")
 
 
 if __name__ == "__main__":

@@ -30,11 +30,13 @@ ls ~/.claude/skills/app-store-optimization/
 
 **keyword_analyzer.py** (13KB)
 - Analyzes keywords for search volume, competition, relevance
-- Key: `analyze_keyword()`, `compare_keywords()`, `find_long_tail_opportunities()`
+- v1.1: Semantic keyword clustering (12 intent categories), natural language query generation
+- Key: `analyze_keyword()`, `compare_keywords()`, `find_long_tail_opportunities()`, `cluster_by_intent()`
 
 **metadata_optimizer.py** (20KB)
 - Optimizes titles, descriptions, keyword fields with platform-specific limits
-- Key: `optimize_title()`, `optimize_description()`, `validate_character_limits()`
+- v1.1: Screenshot caption optimizer, Custom Product Page (CPP) strategy
+- Key: `optimize_title()`, `optimize_description()`, `validate_character_limits()`, `generate_screenshot_captions()`
 
 **competitor_analyzer.py** (21KB)
 - Analyzes competitor ASO strategies, identifies gaps
@@ -42,7 +44,8 @@ ls ~/.claude/skills/app-store-optimization/
 
 **aso_scorer.py** (19KB)
 - Calculates 0-100 ASO health score across metadata, ratings, keywords, conversion
-- Key: `calculate_overall_score()`, `generate_recommendations()`
+- v1.1: Technical performance scoring (crash/ANR/battery), visual optimization scoring, platform-specific weights
+- Key: `calculate_overall_score()`, `generate_recommendations()`, `score_technical_performance()`, `score_visual_optimization()`
 
 **ab_test_planner.py** (23KB)
 - Plans and tracks A/B tests with statistical significance
@@ -54,11 +57,13 @@ ls ~/.claude/skills/app-store-optimization/
 
 **review_analyzer.py** (26KB)
 - Analyzes user reviews for sentiment, issues, feature requests
-- Key: `analyze_sentiment()`, `extract_common_themes()`, `generate_response_templates()`
+- v1.1: iTunes RSS review adapter for real review ingestion
+- Key: `analyze_sentiment()`, `extract_common_themes()`, `generate_response_templates()`, `load_from_itunes_rss()`
 
 **launch_checklist.py** (29KB)
 - Generates pre-launch checklists, compliance validation, timing optimization
-- Key: `generate_prelaunch_checklist()`, `optimize_launch_timing()`
+- v1.1: 6 real 2026 compliance deadlines with status-aware alerts
+- Key: `generate_prelaunch_checklist()`, `optimize_launch_timing()`, `check_compliance_deadlines()`
 
 ### Platform Constraints (Critical)
 
@@ -132,11 +137,15 @@ User provides launch date → `launch_checklist.py` → comprehensive checklist 
 - **Long-Tail Strategy**: Identifies 3-4 word phrases with lower competition
 - **Character Limit Enforcement**: Prevents non-compliant metadata submissions
 - **No Paid Acquisition**: Focuses exclusively on organic ASO (no Apple Search Ads, Google Ads)
+- **Semantic Clustering** (v1.1): Groups keywords by 12 intent categories with natural language queries for voice/AI search
+- **Platform-Specific Scoring** (v1.1): Distinct weight profiles for Google vs Apple ranking algorithms
+- **2026 Compliance Awareness** (v1.1): Tracks 6 real regulatory deadlines with status alerts
+- **Region Targeting** (v1.1): All slash commands accept market/country for localized analysis
 
 ## Version Info
 
-**Current Version**: 1.0.0 (November 7, 2025)
-**Platform Requirements**: Current as of November 2025
+**Current Version**: 1.1.0 (February 14, 2026)
+**Platform Requirements**: Current as of February 2026
 **Python**: 3.7+
 **Target Users**: App developers, app marketers, indie developers, ASO specialists
 

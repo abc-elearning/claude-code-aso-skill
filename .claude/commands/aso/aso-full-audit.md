@@ -26,6 +26,23 @@ Invokes **aso-master** orchestrator to coordinate all 3 specialist agents:
 /aso-full-audit FitFlow
 ```
 
+## Region Targeting
+
+Specify your target market for region-specific analysis:
+
+```bash
+/aso-full-audit FitFlow --region jp
+```
+
+Supported: Any App Store territory code (us, gb, jp, kr, de, fr, br, au, cn, in, etc.)
+Default: us (United States)
+
+Region affects:
+- iTunes API data (competitor rankings, ratings specific to that market)
+- Keyword competition levels (varies by region)
+- Competitor landscape (different top apps per region)
+- Review analysis (region-specific user reviews)
+
 ## What You'll Get
 
 Complete output folder structure at `outputs/[app-name]/`:
@@ -40,13 +57,15 @@ outputs/FitFlow/
 ├── 02-metadata/
 │   ├── apple-metadata.md          # Copy-paste ready for App Store Connect
 │   ├── google-metadata.md         # Copy-paste ready for Play Console
+│   ├── screenshot-captions.md     # Keyword-optimized screenshot captions
+│   ├── cpp-strategy.md            # Custom Product Page strategy (up to 70)
 │   ├── visual-assets-spec.md      # Icon/screenshot requirements
 │   └── action-metadata.md         # Metadata implementation tasks
 ├── 03-testing/
 │   ├── ab-test-setup.md           # Step-by-step A/B test configuration
 │   └── action-testing.md          # Testing tasks
 ├── 04-launch/
-│   ├── prelaunch-checklist.md     # 47-item validation checklist
+│   ├── prelaunch-checklist.md     # 53-item validation checklist
 │   ├── timeline.md                # Week-by-week schedule with specific dates
 │   ├── submission-guide.md        # Platform submission instructions
 │   └── action-launch.md           # Launch execution tasks
@@ -68,19 +87,24 @@ When you run this command, aso-master will:
    - Target audience
    - Platforms (Apple, Google, or both)
    - Launch date (or TBD)
+   - Target region/market (e.g., us, jp, de, kr, br, au, fr, cn) - defaults to "us" if not specified
 
 2. **Execute research phase (10-15 min):**
    - Fetch competitor data via iTunes API
+   - Fetch and analyze user reviews
+   - Perform sentiment analysis
    - Analyze keywords
    - Identify competitive gaps
 
 3. **Execute optimization phase (5-7 min):**
    - Generate Apple metadata
    - Generate Google metadata
+   - Create screenshot captions (keyword-optimized)
+   - Develop Custom Product Page strategy
    - Create A/B testing strategy
 
 4. **Execute strategy phase (8-10 min):**
-   - Create pre-launch checklist
+   - Create pre-launch checklist (53 items with 2026 compliance)
    - Build timeline with specific dates
    - Generate review response templates
    - Create ongoing optimization schedule
@@ -121,6 +145,7 @@ None - the command handles everything!
 
 The audit fetches real data from:
 - iTunes Search API (free, official Apple data)
+- iTunes RSS endpoint (review fetching for competitor sentiment analysis)
 - WebFetch scraping (App Store/Play Store pages)
 - Python analysis modules (keyword_analyzer.py, competitor_analyzer.py, etc.)
 
@@ -158,7 +183,7 @@ aso-master: Perfect! Starting full ASO audit...
   - Creating A/B testing strategy
 
 ✓ Phase 3: Strategy (aso-strategist executing...)
-  - Creating pre-launch checklist (47 items)
+  - Creating pre-launch checklist (53 items)
   - Building timeline (Nov 7 → Dec 15, 2025)
   - Generating review response templates
 

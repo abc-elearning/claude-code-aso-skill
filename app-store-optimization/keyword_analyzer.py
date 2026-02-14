@@ -27,6 +27,22 @@ class KeywordAnalyzer:
         'very_high': 500000
     }
 
+    # Intent categories for semantic clustering
+    INTENT_CATEGORIES = {
+        'track': ['track', 'tracking', 'monitor', 'log', 'record', 'measure', 'count', 'diary'],
+        'manage': ['manage', 'management', 'organize', 'organizer', 'control', 'handle', 'coordinate'],
+        'plan': ['plan', 'planner', 'planning', 'schedule', 'scheduler', 'calendar', 'agenda', 'timeline'],
+        'create': ['create', 'creator', 'make', 'maker', 'build', 'builder', 'design', 'designer', 'edit', 'editor'],
+        'learn': ['learn', 'learning', 'study', 'education', 'course', 'tutorial', 'teach', 'training'],
+        'find': ['find', 'finder', 'search', 'discover', 'locate', 'lookup', 'browse', 'explore'],
+        'compare': ['compare', 'comparison', 'versus', 'review', 'rate', 'rating', 'rank', 'ranking'],
+        'share': ['share', 'sharing', 'social', 'connect', 'collaborate', 'collaboration', 'team', 'group'],
+        'save': ['save', 'saving', 'budget', 'budgeting', 'money', 'finance', 'financial', 'expense', 'cost'],
+        'health': ['health', 'healthy', 'fitness', 'workout', 'exercise', 'diet', 'nutrition', 'wellness', 'meditation'],
+        'communicate': ['chat', 'message', 'messaging', 'call', 'calling', 'video', 'voice', 'talk'],
+        'automate': ['automate', 'automation', 'automatic', 'auto', 'smart', 'ai', 'intelligent', 'reminder'],
+    }
+
     def __init__(self):
         """Initialize keyword analyzer."""
         self.analyzed_keywords = {}
@@ -266,6 +282,233 @@ class KeywordAnalyzer:
             densities[keyword] = round(density, 2)
 
         return densities
+
+    def cluster_by_intent(
+        self,
+        keywords: List[str],
+        keyword_data: Optional[Dict[str, Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Group keywords into intent-based semantic clusters.
+
+        Args:
+            keywords: List of keyword strings to cluster
+            keyword_data: Optional dict mapping keyword to its analysis data
+                         (search_volume, competition, relevance_score)
+
+        Returns:
+            List of cluster dicts with keys:
+            {name, intent, keywords, natural_queries, combined_score, keyword_count}
+        """
+        clusters = {}
+        unclustered = []
+
+        for keyword in keywords:
+            words = set(re.findall(r'\w+', keyword.lower()))
+            matched_intent = None
+            best_overlap = 0
+
+            for intent, intent_words in self.INTENT_CATEGORIES.items():
+                overlap = len(words.intersection(set(intent_words)))
+                if overlap > best_overlap:
+                    best_overlap = overlap
+                    matched_intent = intent
+
+            if matched_intent and best_overlap > 0:
+                if matched_intent not in clusters:
+                    clusters[matched_intent] = []
+                clusters[matched_intent].append(keyword)
+            else:
+                unclustered.append(keyword)
+
+        # Build cluster results
+        result = []
+        for intent, cluster_keywords in clusters.items():
+            cluster = {
+                'name': f"{intent.title()} Intent",
+                'intent': intent,
+                'keywords': cluster_keywords,
+                'keyword_count': len(cluster_keywords),
+                'natural_queries': self.generate_natural_queries(intent, cluster_keywords),
+                'combined_score': self.score_cluster(cluster_keywords, keyword_data),
+            }
+            result.append(cluster)
+
+        # Add unclustered keywords as "General" cluster
+        if unclustered:
+            result.append({
+                'name': 'General',
+                'intent': 'general',
+                'keywords': unclustered,
+                'keyword_count': len(unclustered),
+                'natural_queries': [],
+                'combined_score': self.score_cluster(unclustered, keyword_data),
+            })
+
+        # Sort by combined score descending
+        result.sort(key=lambda x: x['combined_score'], reverse=True)
+        return result
+
+    def generate_natural_queries(
+        self,
+        intent: str,
+        keywords: List[str],
+        max_queries: int = 5
+    ) -> List[str]:
+        """
+        Generate natural language query variants for voice/AI search optimization.
+
+        Args:
+            intent: The intent category name
+            keywords: Keywords in this cluster
+            max_queries: Maximum queries to generate
+
+        Returns:
+            List of natural language query strings
+        """
+        templates = {
+            'track': [
+                "apps to help me track {obj}",
+                "best {obj} tracking app",
+                "how to track my {obj} on my phone",
+            ],
+            'manage': [
+                "apps to help me manage {obj}",
+                "best {obj} management app",
+                "how to organize my {obj}",
+            ],
+            'plan': [
+                "apps to help me plan {obj}",
+                "best {obj} planner app",
+                "how to schedule my {obj}",
+            ],
+            'create': [
+                "apps to create {obj}",
+                "best {obj} creator app",
+                "easy way to make {obj}",
+            ],
+            'learn': [
+                "apps to learn {obj}",
+                "best {obj} learning app",
+                "how to study {obj} on my phone",
+            ],
+            'find': [
+                "apps to find {obj}",
+                "best app for finding {obj}",
+                "where to find {obj}",
+            ],
+            'compare': [
+                "apps to compare {obj}",
+                "best {obj} comparison app",
+                "how to compare {obj}",
+            ],
+            'share': [
+                "apps to share {obj}",
+                "best {obj} sharing app",
+                "how to collaborate on {obj}",
+            ],
+            'save': [
+                "apps to save {obj}",
+                "best {obj} budgeting app",
+                "how to manage my {obj}",
+            ],
+            'health': [
+                "apps for {obj}",
+                "best {obj} app",
+                "how to improve my {obj}",
+            ],
+            'communicate': [
+                "apps for {obj}",
+                "best {obj} app",
+                "how to {obj} for free",
+            ],
+            'automate': [
+                "apps to automate {obj}",
+                "best smart {obj} app",
+                "how to automate {obj}",
+            ],
+        }
+
+        queries = []
+        intent_templates = templates.get(intent, [
+            "apps for {obj}",
+            "best {obj} app",
+        ])
+
+        # Extract object nouns from keywords (remove intent words)
+        intent_words = set(self.INTENT_CATEGORIES.get(intent, []))
+        objects = set()
+        for kw in keywords:
+            words = re.findall(r'\w+', kw.lower())
+            obj_words = [w for w in words if w not in intent_words and len(w) > 2]
+            if obj_words:
+                objects.add(' '.join(obj_words))
+
+        # Generate queries from templates
+        for obj in list(objects)[:max_queries]:
+            for template in intent_templates:
+                query = template.format(obj=obj)
+                if query not in queries:
+                    queries.append(query)
+                    if len(queries) >= max_queries:
+                        return queries
+
+        return queries
+
+    def score_cluster(
+        self,
+        keywords: List[str],
+        keyword_data: Optional[Dict[str, Dict[str, Any]]] = None
+    ) -> float:
+        """
+        Calculate combined potential score for a keyword cluster.
+
+        Args:
+            keywords: List of keywords in the cluster
+            keyword_data: Optional analysis data per keyword
+
+        Returns:
+            Combined cluster score (0.0 - 100.0)
+        """
+        if not keywords:
+            return 0.0
+
+        if not keyword_data:
+            # Without data, score based on keyword count and diversity
+            return min(len(keywords) * 10.0, 50.0)
+
+        total_volume = 0
+        total_relevance = 0.0
+        total_opportunity = 0.0
+        count = 0
+
+        for keyword in keywords:
+            data = keyword_data.get(keyword, {})
+            volume = data.get('search_volume', 0)
+            competition = data.get('competing_apps', 5000)
+            relevance = data.get('relevance_score', 0.5)
+
+            total_volume += volume
+            total_relevance += relevance
+
+            # Opportunity = high volume + low competition
+            if competition > 0:
+                opportunity = (volume / competition) * relevance
+            else:
+                opportunity = volume * relevance
+            total_opportunity += opportunity
+            count += 1
+
+        if count == 0:
+            return 0.0
+
+        # Normalize scores
+        volume_score = min(total_volume / 10000, 30.0)  # Max 30 points
+        relevance_score = (total_relevance / count) * 30.0  # Max 30 points
+        opportunity_score = min(total_opportunity * 10, 30.0)  # Max 30 points
+        diversity_score = min(count * 2.0, 10.0)  # Max 10 points (keyword count)
+
+        return round(volume_score + relevance_score + opportunity_score + diversity_score, 1)
 
     def _calculate_competition_level(self, competing_apps: int) -> str:
         """Determine competition level based on number of competing apps."""

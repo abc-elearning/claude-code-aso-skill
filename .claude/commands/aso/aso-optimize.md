@@ -18,6 +18,23 @@ Generate copy-paste ready app store metadata optimized for discoverability and c
 /aso-optimize TaskFlow
 ```
 
+## Region Targeting
+
+Specify your target market for region-specific analysis:
+
+```bash
+/aso-optimize FitFlow --region jp
+```
+
+Supported: Any App Store territory code (us, gb, jp, kr, de, fr, br, au, cn, in, etc.)
+Default: us (United States)
+
+Region affects:
+- iTunes API data (competitor rankings, ratings specific to that market)
+- Keyword competition levels (varies by region)
+- Competitor landscape (different top apps per region)
+- Review analysis (region-specific user reviews)
+
 ## What This Command Does
 
 Invokes **aso-optimizer** directly (bypasses research and strategy phases) to quickly generate:
@@ -52,6 +69,7 @@ Creates `outputs/[app-name]/02-metadata/` with:
 - Key features (3-5 bullets)
 - Target keywords (or will use defaults for category)
 - Platforms (Apple, Google, or both)
+- Target region/market (e.g., us, jp, de, kr, br, au, fr, cn) - defaults to "us" if not specified
 
 ## Example
 

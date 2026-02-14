@@ -19,11 +19,28 @@ Create a detailed pre-launch checklist and week-by-week timeline to ensure succe
 /aso-prelaunch FitFlow TBD
 ```
 
+## Region Targeting
+
+Specify your target market for region-specific analysis:
+
+```bash
+/aso-prelaunch FitFlow --region jp
+```
+
+Supported: Any App Store territory code (us, gb, jp, kr, de, fr, br, au, cn, in, etc.)
+Default: us (United States)
+
+Region affects:
+- iTunes API data (competitor rankings, ratings specific to that market)
+- Keyword competition levels (varies by region)
+- Competitor landscape (different top apps per region)
+- Review analysis (region-specific user reviews)
+
 ## What This Command Does
 
 Invokes **aso-strategist** directly to generate:
 
-- Pre-launch checklist (47 validation items)
+- Pre-launch checklist (53 validation items)
 - Week-by-week timeline with specific calendar dates
 - Submission guides for both platforms
 - Review response templates
@@ -55,6 +72,7 @@ Creates `outputs/[app-name]/04-launch/` and `outputs/[app-name]/05-optimization/
 - Launch date (or "TBD" for estimate)
 - Platforms (Apple, Google, or both)
 - App maturity (pre-launch, soft launch, or already live)
+- Target region/market (e.g., us, jp, de, kr, br, au, fr, cn) - defaults to "us" if not specified
 
 ## Example
 
@@ -67,7 +85,7 @@ Today: November 7, 2025
 Time to launch: 38 days (5.4 weeks)
 
 Generating:
-- Pre-launch checklist (47 items across 7 phases)
+- Pre-launch checklist (53 items across 7 phases)
 - Timeline (Nov 7 → Dec 15 with specific dates)
 - Submission guides
 - Review response templates

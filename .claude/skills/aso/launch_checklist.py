@@ -10,6 +10,58 @@ from datetime import datetime, timedelta
 class LaunchChecklistGenerator:
     """Generates comprehensive checklists for app launches and updates."""
 
+    # 2026 Platform Compliance Deadlines
+    COMPLIANCE_DEADLINES_2026 = [
+        {
+            'name': 'Google Age Signals API Restrictions',
+            'platform': 'google',
+            'deadline': '2026-01-01',
+            'action': 'Ensure Age Signals API data is only used for age-appropriate experiences in the receiving app',
+            'consequence': 'Policy violation; potential app removal from Google Play Store',
+            'verification': 'Review Age Signals API implementation; confirm data usage compliance',
+        },
+        {
+            'name': 'Apple Age Rating Restructuring',
+            'platform': 'apple',
+            'deadline': '2026-01-31',
+            'action': 'Update age rating responses to new 5-category system (expanded from 2 categories)',
+            'consequence': 'App submissions may be interrupted until age rating is updated',
+            'verification': 'Check App Store Connect for age rating update prompts; verify all content ratings are accurate',
+        },
+        {
+            'name': 'Google US Billing Policy Changes',
+            'platform': 'google',
+            'deadline': '2026-01-28',
+            'action': 'Review billing implementation for US users; alternative billing now permitted',
+            'consequence': 'Non-compliance may affect app distribution in the US market',
+            'verification': 'Review in-app purchase flows; update billing disclosures if using alternative billing',
+        },
+        {
+            'name': 'Google Battery Optimization Compliance',
+            'platform': 'google',
+            'deadline': '2026-03-01',
+            'action': 'Optimize app battery usage; review wake locks, background processes, and power consumption',
+            'consequence': 'Non-compliant apps may be excluded from prominent discovery surfaces and rankings',
+            'verification': 'Check Android Vitals dashboard; ensure battery impact < 5%; review wake lock usage',
+        },
+        {
+            'name': 'Apple Promo Code Discontinuation',
+            'platform': 'apple',
+            'deadline': '2026-03-26',
+            'action': 'Migrate from promo codes to expanded offer codes for in-app purchases',
+            'consequence': 'Promo codes for in-app purchases will stop working; must use offer codes instead',
+            'verification': 'Identify all promo code usage; set up equivalent offer codes in App Store Connect',
+        },
+        {
+            'name': 'Apple iOS 26 SDK Requirement',
+            'platform': 'apple',
+            'deadline': '2026-04-28',
+            'action': 'Build app with iOS 26 SDK (also applies to iPadOS 26, tvOS 26, watchOS 26, visionOS 26)',
+            'consequence': 'App submissions will be rejected if not built with required SDK version',
+            'verification': 'Update Xcode to latest version; rebuild with iOS 26 SDK; verify deployment target',
+        },
+    ]
+
     def __init__(self, platform: str = 'both'):
         """
         Initialize checklist generator.
@@ -222,6 +274,81 @@ class LaunchChecklistGenerator:
             'implementation_timeline': self._create_seasonal_timeline(campaigns)
         }
 
+    def check_compliance_deadlines(
+        self,
+        launch_date: str,
+        platforms: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Check 2026 compliance deadlines against planned launch date.
+
+        Args:
+            launch_date: Launch date in ISO format (YYYY-MM-DD)
+            platforms: Filter by platform (['apple', 'google'] or None for both)
+
+        Returns:
+            Dict with compliance status:
+            {passed: [...], warning: [...], upcoming: [...], summary: str}
+        """
+        try:
+            launch_dt = datetime.strptime(launch_date, '%Y-%m-%d')
+        except ValueError:
+            return {
+                'error': f'Invalid date format: {launch_date}. Use YYYY-MM-DD.',
+                'passed': [], 'warning': [], 'upcoming': []
+            }
+
+        today = datetime.now()
+        warning_threshold = timedelta(days=30)
+
+        passed = []
+        warning = []
+        upcoming = []
+
+        for item in self.COMPLIANCE_DEADLINES_2026:
+            # Filter by platform if specified
+            if platforms and item['platform'] not in platforms:
+                continue
+
+            deadline_dt = datetime.strptime(item['deadline'], '%Y-%m-%d')
+            days_until = (deadline_dt - today).days
+            days_from_launch = (deadline_dt - launch_dt).days
+
+            status_item = {
+                'name': item['name'],
+                'platform': item['platform'],
+                'deadline': item['deadline'],
+                'action': item['action'],
+                'consequence': item['consequence'],
+                'verification': item['verification'],
+                'days_until_deadline': days_until,
+                'days_from_launch': days_from_launch,
+            }
+
+            if days_until < 0:
+                status_item['status'] = 'passed'
+                status_item['message'] = f"Deadline passed {abs(days_until)} days ago - verify compliance completed"
+                passed.append(status_item)
+            elif days_until <= 30:
+                status_item['status'] = 'warning'
+                status_item['message'] = f"Deadline in {days_until} days - action required immediately"
+                warning.append(status_item)
+            else:
+                status_item['status'] = 'upcoming'
+                status_item['message'] = f"Deadline in {days_until} days"
+                upcoming.append(status_item)
+
+        total = len(passed) + len(warning) + len(upcoming)
+        summary = f"{total} compliance items checked: {len(passed)} passed, {len(warning)} warnings, {len(upcoming)} upcoming"
+
+        return {
+            'passed': passed,
+            'warning': warning,
+            'upcoming': upcoming,
+            'summary': summary,
+            'launch_date': launch_date,
+        }
+
     def _generate_apple_checklist(self, app_info: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Generate Apple App Store specific checklist."""
         return [
@@ -368,6 +495,17 @@ class LaunchChecklistGenerator:
                     {'task': 'FAQ page created', 'status': 'pending'},
                     {'task': 'Documentation for users prepared', 'status': 'pending'},
                     {'task': 'Team trained on handling reviews', 'status': 'pending'}
+                ]
+            },
+            {
+                'category': '2026 Compliance',
+                'items': [
+                    {'task': 'Google Age Signals API data usage verified for age-appropriate experiences only', 'status': 'pending', 'platform': 'google', 'deadline': '2026-01-01'},
+                    {'task': 'Apple age rating updated to new 5-category system', 'status': 'pending', 'platform': 'apple', 'deadline': '2026-01-31'},
+                    {'task': 'Google US billing implementation reviewed for alternative billing compliance', 'status': 'pending', 'platform': 'google', 'deadline': '2026-01-28'},
+                    {'task': 'App battery optimization verified (Android Vitals < 5% impact)', 'status': 'pending', 'platform': 'google', 'deadline': '2026-03-01'},
+                    {'task': 'Promo codes migrated to offer codes for in-app purchases', 'status': 'pending', 'platform': 'apple', 'deadline': '2026-03-26'},
+                    {'task': 'App built with iOS 26 SDK (and iPadOS/tvOS/watchOS/visionOS 26)', 'status': 'pending', 'platform': 'apple', 'deadline': '2026-04-28'}
                 ]
             }
         ]

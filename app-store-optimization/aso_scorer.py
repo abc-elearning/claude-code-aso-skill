@@ -1,21 +1,51 @@
 """
 ASO scoring module for App Store Optimization.
 Calculates comprehensive ASO health score across multiple dimensions.
+Supports platform-specific weighting for Apple App Store and Google Play Store.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 
 class ASOScorer:
     """Calculates overall ASO health score and provides recommendations."""
 
-    # Score weights for different components (total = 100)
+    # Default score weights for different components (total = 100)
     WEIGHTS = {
-        'metadata_quality': 25,
-        'ratings_reviews': 25,
-        'keyword_performance': 25,
-        'conversion_metrics': 25
+        'metadata_quality': 20,
+        'ratings_reviews': 20,
+        'keyword_performance': 20,
+        'conversion_metrics': 20,
+        'technical_performance': 15,
+        'visual_optimization': 5
     }
+
+    # Google Play Store weights - technical performance weighted higher
+    # due to Android Vitals visibility and ranking impact
+    GOOGLE_WEIGHTS = {
+        'metadata_quality': 20,
+        'ratings_reviews': 20,
+        'keyword_performance': 20,
+        'conversion_metrics': 15,
+        'technical_performance': 20,
+        'visual_optimization': 5
+    }
+
+    # Apple App Store weights - visual optimization weighted higher
+    # due to CPP (Custom Product Pages) and editorial feature consideration
+    APPLE_WEIGHTS = {
+        'metadata_quality': 20,
+        'ratings_reviews': 20,
+        'keyword_performance': 20,
+        'conversion_metrics': 20,
+        'technical_performance': 10,
+        'visual_optimization': 10
+    }
+
+    # Assert all weight configurations sum to 100
+    assert sum(WEIGHTS.values()) == 100, f"Default WEIGHTS must sum to 100, got {sum(WEIGHTS.values())}"
+    assert sum(GOOGLE_WEIGHTS.values()) == 100, f"GOOGLE_WEIGHTS must sum to 100, got {sum(GOOGLE_WEIGHTS.values())}"
+    assert sum(APPLE_WEIGHTS.values()) == 100, f"APPLE_WEIGHTS must sum to 100, got {sum(APPLE_WEIGHTS.values())}"
 
     # Benchmarks for scoring
     BENCHMARKS = {
@@ -29,16 +59,41 @@ class ASOScorer:
         'conversion_rate': {'min': 0.02, 'target': 0.10}
     }
 
-    def __init__(self):
-        """Initialize ASO scorer."""
+    # Technical performance benchmarks
+    TECHNICAL_BENCHMARKS = {
+        'crash_rate': {'good': 1.0, 'acceptable': 2.0},      # percentage
+        'anr_rate': {'good': 0.5, 'acceptable': 1.0},         # percentage (Android)
+        'battery_impact': {'good': 5.0, 'acceptable': 10.0}   # percentage
+    }
+
+    def __init__(self, platform: Optional[str] = None):
+        """
+        Initialize ASO scorer.
+
+        Args:
+            platform: Optional platform identifier ('apple', 'google', or None for default).
+                      When set, platform-specific weights are used automatically.
+        """
         self.score_breakdown = {}
+        self.platform = platform.lower() if platform else None
+        self._active_weights = self._resolve_weights()
+
+    def _resolve_weights(self) -> Dict[str, int]:
+        """Resolve which weight configuration to use based on platform."""
+        if self.platform == 'google':
+            return dict(self.GOOGLE_WEIGHTS)
+        elif self.platform == 'apple':
+            return dict(self.APPLE_WEIGHTS)
+        return dict(self.WEIGHTS)
 
     def calculate_overall_score(
         self,
         metadata: Dict[str, Any],
         ratings: Dict[str, Any],
         keyword_performance: Dict[str, Any],
-        conversion: Dict[str, Any]
+        conversion: Dict[str, Any],
+        technical_data: Optional[Dict[str, Any]] = None,
+        visual_data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Calculate comprehensive ASO score (0-100).
@@ -48,45 +103,78 @@ class ASOScorer:
             ratings: Rating average and count
             keyword_performance: Keyword ranking data
             conversion: Impression-to-install metrics
+            technical_data: Optional technical performance data
+                           (crash_rate, anr_rate, battery_impact).
+                           Defaults to neutral score (50) when not provided.
+            visual_data: Optional visual optimization data
+                        (has_captions, cpp_count, has_video).
+                        Defaults to neutral score (50) when not provided.
 
         Returns:
             Overall score with detailed breakdown
         """
+        weights = self._active_weights
+
         # Calculate component scores
         metadata_score = self.score_metadata_quality(metadata)
         ratings_score = self.score_ratings_reviews(ratings)
         keyword_score = self.score_keyword_performance(keyword_performance)
         conversion_score = self.score_conversion_metrics(conversion)
 
+        # Technical and visual scores default to neutral (50) for backward compatibility
+        if technical_data is not None:
+            technical_score = self.score_technical_performance(**technical_data)
+        else:
+            technical_score = 50.0
+
+        if visual_data is not None:
+            visual_score = self.score_visual_optimization(**visual_data)
+        else:
+            visual_score = 50.0
+
         # Calculate weighted overall score
         overall_score = (
-            metadata_score * (self.WEIGHTS['metadata_quality'] / 100) +
-            ratings_score * (self.WEIGHTS['ratings_reviews'] / 100) +
-            keyword_score * (self.WEIGHTS['keyword_performance'] / 100) +
-            conversion_score * (self.WEIGHTS['conversion_metrics'] / 100)
+            metadata_score * (weights['metadata_quality'] / 100) +
+            ratings_score * (weights['ratings_reviews'] / 100) +
+            keyword_score * (weights['keyword_performance'] / 100) +
+            conversion_score * (weights['conversion_metrics'] / 100) +
+            technical_score * (weights['technical_performance'] / 100) +
+            visual_score * (weights['visual_optimization'] / 100)
         )
 
         # Store breakdown
         self.score_breakdown = {
             'metadata_quality': {
                 'score': metadata_score,
-                'weight': self.WEIGHTS['metadata_quality'],
-                'weighted_contribution': round(metadata_score * (self.WEIGHTS['metadata_quality'] / 100), 1)
+                'weight': weights['metadata_quality'],
+                'weighted_contribution': round(metadata_score * (weights['metadata_quality'] / 100), 1)
             },
             'ratings_reviews': {
                 'score': ratings_score,
-                'weight': self.WEIGHTS['ratings_reviews'],
-                'weighted_contribution': round(ratings_score * (self.WEIGHTS['ratings_reviews'] / 100), 1)
+                'weight': weights['ratings_reviews'],
+                'weighted_contribution': round(ratings_score * (weights['ratings_reviews'] / 100), 1)
             },
             'keyword_performance': {
                 'score': keyword_score,
-                'weight': self.WEIGHTS['keyword_performance'],
-                'weighted_contribution': round(keyword_score * (self.WEIGHTS['keyword_performance'] / 100), 1)
+                'weight': weights['keyword_performance'],
+                'weighted_contribution': round(keyword_score * (weights['keyword_performance'] / 100), 1)
             },
             'conversion_metrics': {
                 'score': conversion_score,
-                'weight': self.WEIGHTS['conversion_metrics'],
-                'weighted_contribution': round(conversion_score * (self.WEIGHTS['conversion_metrics'] / 100), 1)
+                'weight': weights['conversion_metrics'],
+                'weighted_contribution': round(conversion_score * (weights['conversion_metrics'] / 100), 1)
+            },
+            'technical_performance': {
+                'score': technical_score,
+                'weight': weights['technical_performance'],
+                'weighted_contribution': round(technical_score * (weights['technical_performance'] / 100), 1),
+                'data_provided': technical_data is not None
+            },
+            'visual_optimization': {
+                'score': visual_score,
+                'weight': weights['visual_optimization'],
+                'weighted_contribution': round(visual_score * (weights['visual_optimization'] / 100), 1),
+                'data_provided': visual_data is not None
             }
         }
 
@@ -95,7 +183,9 @@ class ASOScorer:
             metadata_score,
             ratings_score,
             keyword_score,
-            conversion_score
+            conversion_score,
+            technical_score,
+            visual_score
         )
 
         # Assess overall health
@@ -104,6 +194,8 @@ class ASOScorer:
         return {
             'overall_score': round(overall_score, 1),
             'health_status': health_status,
+            'platform': self.platform or 'default',
+            'weights_used': weights,
             'score_breakdown': self.score_breakdown,
             'recommendations': recommendations,
             'priority_actions': self._prioritize_actions(recommendations),
@@ -320,12 +412,121 @@ class ASOScorer:
 
         return round(min(total_score, 100), 1)
 
+    def score_technical_performance(
+        self,
+        crash_rate: float = 0.0,
+        anr_rate: float = 0.0,
+        battery_impact: float = 0.0
+    ) -> float:
+        """
+        Score technical performance (0-100).
+
+        Evaluates app stability and resource usage against industry benchmarks.
+        Android Vitals data is the primary source for Google Play; Apple does not
+        publicly expose equivalent metrics, so data is typically user-provided.
+
+        Args:
+            crash_rate: Crash rate percentage (e.g. 0.8 means 0.8% of sessions crash).
+                        Benchmark: <1% good, <2% acceptable.
+            anr_rate: Application Not Responding rate percentage (Android).
+                      Benchmark: <0.5% good, <1% acceptable.
+            battery_impact: Excessive battery usage percentage.
+                           Benchmark: <5% good, <10% acceptable.
+
+        Returns:
+            Score from 0 to 100.
+        """
+        benchmarks = self.TECHNICAL_BENCHMARKS
+
+        # Crash rate score (0-40 points) - most impactful metric
+        if crash_rate <= benchmarks['crash_rate']['good']:
+            crash_score = 40.0
+        elif crash_rate <= benchmarks['crash_rate']['acceptable']:
+            # Linear interpolation between good and acceptable
+            proportion = (crash_rate - benchmarks['crash_rate']['good']) / \
+                        (benchmarks['crash_rate']['acceptable'] - benchmarks['crash_rate']['good'])
+            crash_score = 40.0 - (proportion * 20.0)  # 40 -> 20
+        else:
+            # Above acceptable threshold - steep penalty
+            excess = crash_rate - benchmarks['crash_rate']['acceptable']
+            crash_score = max(20.0 - (excess * 10.0), 0.0)
+
+        # ANR rate score (0-35 points) - critical for Google Play ranking
+        if anr_rate <= benchmarks['anr_rate']['good']:
+            anr_score = 35.0
+        elif anr_rate <= benchmarks['anr_rate']['acceptable']:
+            proportion = (anr_rate - benchmarks['anr_rate']['good']) / \
+                        (benchmarks['anr_rate']['acceptable'] - benchmarks['anr_rate']['good'])
+            anr_score = 35.0 - (proportion * 17.5)  # 35 -> 17.5
+        else:
+            excess = anr_rate - benchmarks['anr_rate']['acceptable']
+            anr_score = max(17.5 - (excess * 8.75), 0.0)
+
+        # Battery impact score (0-25 points)
+        if battery_impact <= benchmarks['battery_impact']['good']:
+            battery_score = 25.0
+        elif battery_impact <= benchmarks['battery_impact']['acceptable']:
+            proportion = (battery_impact - benchmarks['battery_impact']['good']) / \
+                        (benchmarks['battery_impact']['acceptable'] - benchmarks['battery_impact']['good'])
+            battery_score = 25.0 - (proportion * 12.5)  # 25 -> 12.5
+        else:
+            excess = battery_impact - benchmarks['battery_impact']['acceptable']
+            battery_score = max(12.5 - (excess * 2.5), 0.0)
+
+        total_score = crash_score + anr_score + battery_score
+        return round(min(total_score, 100.0), 1)
+
+    def score_visual_optimization(
+        self,
+        has_captions: bool = False,
+        cpp_count: int = 0,
+        has_video: bool = False
+    ) -> float:
+        """
+        Score visual optimization (0-100).
+
+        Evaluates screenshot and visual asset optimization. Points are awarded
+        on a 5-point scale then mapped to 0-100.
+
+        Scoring breakdown (5 points max):
+        - has_captions: 3 points (captions on screenshots significantly boost conversion)
+        - cpp_count > 0: 1 point (Custom Product Pages for Apple / Store Listing Experiments)
+        - has_video: 1 point (app preview video)
+
+        Args:
+            has_captions: Whether screenshots include text captions/overlays.
+            cpp_count: Number of Custom Product Pages (Apple) or custom listings (Google).
+            has_video: Whether an app preview video is present.
+
+        Returns:
+            Score from 0 to 100.
+        """
+        points = 0
+
+        # Screenshot captions (3 points) - highest impact visual element
+        if has_captions:
+            points += 3
+
+        # Custom Product Pages / custom listings (1 point)
+        if cpp_count > 0:
+            points += 1
+
+        # Video preview (1 point)
+        if has_video:
+            points += 1
+
+        # Map 0-5 points to 0-100 scale
+        score = (points / 5.0) * 100.0
+        return round(score, 1)
+
     def generate_recommendations(
         self,
         metadata_score: float,
         ratings_score: float,
         keyword_score: float,
-        conversion_score: float
+        conversion_score: float,
+        technical_score: float = 50.0,
+        visual_score: float = 50.0
     ) -> List[Dict[str, Any]]:
         """Generate prioritized recommendations based on scores."""
         recommendations = []
@@ -402,6 +603,70 @@ class ASOScorer:
                 'expected_impact': 'Incremental conversion improvements'
             })
 
+        # Technical performance recommendations
+        if technical_score < 40:
+            recommendations.append({
+                'category': 'technical_performance',
+                'priority': 'high',
+                'action': 'Address critical stability issues',
+                'details': (
+                    'Crash rate and/or ANR rate exceed acceptable thresholds. '
+                    'Prioritize crash fixes, reduce ANR by moving heavy work off the main thread, '
+                    'and optimize battery usage. Google Play penalizes apps with poor Android Vitals.'
+                ),
+                'expected_impact': 'Improved ranking on Google Play, reduced uninstalls, better user retention'
+            })
+        elif technical_score < 70:
+            recommendations.append({
+                'category': 'technical_performance',
+                'priority': 'medium',
+                'action': 'Improve app stability and performance',
+                'details': (
+                    'Technical metrics are acceptable but not optimal. '
+                    'Target crash rate below 1%, ANR rate below 0.5%, '
+                    'and battery impact below 5% to reach top-tier performance.'
+                ),
+                'expected_impact': 'Better Android Vitals standing, improved store ranking signals'
+            })
+        elif technical_score < 90:
+            recommendations.append({
+                'category': 'technical_performance',
+                'priority': 'low',
+                'action': 'Fine-tune technical performance',
+                'details': (
+                    'Technical metrics are good. Consider further optimizing startup time, '
+                    'reducing memory footprint, and monitoring for regressions in new releases.'
+                ),
+                'expected_impact': 'Marginal ranking improvement, sustained app quality'
+            })
+
+        # Visual optimization recommendations
+        if visual_score < 40:
+            recommendations.append({
+                'category': 'visual_optimization',
+                'priority': 'high',
+                'action': 'Add captions and video to screenshots',
+                'details': (
+                    'Screenshots lack captions and no video preview is present. '
+                    'Add descriptive text overlays to screenshots highlighting key features, '
+                    'create an app preview video, and set up Custom Product Pages (Apple) '
+                    'or custom store listings (Google) for targeted campaigns.'
+                ),
+                'expected_impact': 'Significant improvement in conversion rate (captions can boost CVR 15-30%)'
+            })
+        elif visual_score < 80:
+            recommendations.append({
+                'category': 'visual_optimization',
+                'priority': 'medium',
+                'action': 'Enhance visual assets for better conversion',
+                'details': (
+                    'Some visual elements are missing. Ensure all screenshots have captions, '
+                    'add a video preview if missing, and create at least one Custom Product Page '
+                    'to target specific user segments.'
+                ),
+                'expected_impact': 'Incremental conversion improvement through better visual storytelling'
+            })
+
         return recommendations
 
     def _assess_health_status(self, overall_score: float) -> str:
@@ -459,7 +724,10 @@ def calculate_aso_score(
     metadata: Dict[str, Any],
     ratings: Dict[str, Any],
     keyword_performance: Dict[str, Any],
-    conversion: Dict[str, Any]
+    conversion: Dict[str, Any],
+    technical_data: Optional[Dict[str, Any]] = None,
+    visual_data: Optional[Dict[str, Any]] = None,
+    platform: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Convenience function to calculate ASO score.
@@ -469,14 +737,21 @@ def calculate_aso_score(
         ratings: Ratings data
         keyword_performance: Keyword ranking data
         conversion: Conversion metrics
+        technical_data: Optional technical performance data
+                       (crash_rate, anr_rate, battery_impact)
+        visual_data: Optional visual optimization data
+                    (has_captions, cpp_count, has_video)
+        platform: Optional platform ('apple', 'google', or None for default weights)
 
     Returns:
         Complete ASO score report
     """
-    scorer = ASOScorer()
+    scorer = ASOScorer(platform=platform)
     return scorer.calculate_overall_score(
         metadata,
         ratings,
         keyword_performance,
-        conversion
+        conversion,
+        technical_data=technical_data,
+        visual_data=visual_data
     )

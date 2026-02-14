@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-purple.svg)
 ![Claude App](https://img.shields.io/badge/Claude_App-Compatible-orange.svg)
@@ -33,6 +33,30 @@ Unlike generic ASO tools that provide analysis reports, this system delivers:
 ✅ **Actionable Task Checklists** - 47-item pre-launch validation with success criteria
 ✅ **Specific Timelines** - Real calendar dates, not "Week 1" placeholders
 ✅ **Complete Workflow** - 5-phase execution from research to ongoing optimization
+
+---
+
+## 🆕 What's New in v1.1.0 (February 2026)
+
+**Region Targeting** - All commands now accept user-defined market/country for localized analysis
+
+**iTunes Review API Integration** - Fetch real user reviews via RSS feed with rate limiting and adapter for ReviewAnalyzer
+
+**Semantic Keyword Clustering** - Keywords auto-grouped into 12 intent categories (navigate, compare, learn, manage, etc.) with natural language query generation for voice/AI search
+
+**Screenshot Caption Optimizer** - Generate complementary keyword captions for App Store screenshots, avoiding duplication with title/subtitle
+
+**Custom Product Page (CPP) Strategy** - Planning support for up to 70 Custom Product Pages with audience segmentation
+
+**Technical Performance Scoring** - New ASO score component evaluating crash rate, ANR rate, and battery impact
+
+**Visual Optimization Scoring** - New ASO score component for screenshot captions, CPP count, and app preview video presence
+
+**Platform-Specific Weights** - Google and Apple scoring now uses distinct weight profiles reflecting each platform's ranking algorithm
+
+**2026 Compliance Deadlines** - 6 real regulatory deadlines tracked (Apple iOS 26 SDK, Google Battery Optimization, Promo Code Migration, and more) with status-aware alerts
+
+**Natural Language Query Generation** - Voice and AI search readiness with "how to..." and "best app for..." query templates per keyword cluster
 
 ---
 
@@ -459,7 +483,7 @@ Quality Validation:
 
 ## 🛠️ Tech Stack
 
-- **Language:** Python 3.8+
+- **Language:** Python 3.7+
 - **AI Framework:** Claude Code agents (Opus + Sonnet models)
 - **Data Sources:** iTunes Search API, WebFetch
 - **Output Format:** Markdown with YAML frontmatter
@@ -576,8 +600,8 @@ A: Yes. All agents are Markdown files in `.claude/agents/aso/` - edit freely.
 
 ## 🚦 Status
 
-- **Current Version:** 1.0.0 (Production Ready)
-- **Release Date:** November 7, 2025
+- **Current Version:** 1.1.0 (Production Ready)
+- **Release Date:** February 14, 2026
 - **Status:** ✅ Stable and tested
 - **Maintenance:** Actively maintained
 
@@ -585,24 +609,34 @@ A: Yes. All agents are Markdown files in `.claude/agents/aso/` - edit freely.
 
 ## 🗺️ Roadmap
 
-### Version 1.0 (Current) ✅
+### Version 1.0 ✅
 - [x] Multi-agent system with orchestration
 - [x] iTunes API integration
 - [x] Copy-paste ready metadata
 - [x] Complete documentation
 - [x] Example workflow
 
-### Version 1.1 (Planned)
-- [ ] iTunes Review API integration
-- [ ] Historical tracking database
-- [ ] Enhanced A/B test analytics
-- [ ] Multi-language support (Spanish, German, French)
+### Version 1.1 (Current) ✅
+- [x] Region targeting (user-defined market/country)
+- [x] iTunes Review API integration (fetch_reviews with rate limiting)
+- [x] Semantic keyword clustering (12 intent categories)
+- [x] Screenshot caption optimizer (complementary keywords)
+- [x] Custom Product Page (CPP) strategy (up to 70 CPPs)
+- [x] Technical performance scoring (crash rate, ANR, battery)
+- [x] Visual optimization scoring (captions, CPPs, video)
+- [x] Platform-specific ASO weights (Google vs Apple)
+- [x] 2026 compliance deadlines (6 items)
+- [x] Natural language query generation (voice/AI search)
+- [x] Agent definitions updated with 2026 knowledge
+- [x] Slash commands updated with region targeting
 
 ### Version 2.0 (Future)
 - [ ] Paid API integration (AppTweak, Sensor Tower)
 - [ ] Web dashboard for tracking
 - [ ] Automated reporting
 - [ ] Team collaboration features
+- [ ] Historical tracking database
+- [ ] Multi-language support (Spanish, German, French)
 
 ---
 

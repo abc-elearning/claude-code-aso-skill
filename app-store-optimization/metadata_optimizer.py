@@ -545,6 +545,558 @@ class MetadataOptimizer:
         # Fallback to first option
         return f"Recommended: '{options[0]['title']}' ({options[0]['strategy']})"
 
+    # -------------------------------------------------------------------------
+    # Screenshot Caption Optimizer (Apple indexes captions since June 2025)
+    # -------------------------------------------------------------------------
+
+    # Caption legibility guidance: recommended max characters for readability
+    # on device screens at standard screenshot dimensions.
+    CAPTION_CHAR_GUIDANCE = {
+        'short': {'max_chars': 40, 'description': 'Best for small screenshots / compact layouts'},
+        'medium': {'max_chars': 70, 'description': 'Standard caption length for most screenshots'},
+        'long': {'max_chars': 100, 'description': 'Use sparingly; only for landscape or large display'},
+    }
+
+    # Natural caption templates that read well while incorporating keywords.
+    # {kw} is replaced with a keyword or short keyword phrase.
+    _CAPTION_TEMPLATES = [
+        "Easily {kw} in seconds",
+        "{kw} made simple",
+        "Your personal {kw} assistant",
+        "Smart {kw} at your fingertips",
+        "Track and {kw} effortlessly",
+        "Powerful {kw} tools",
+        "Beautiful {kw} experience",
+        "All your {kw} in one place",
+        "{kw} with confidence",
+        "Discover better {kw}",
+        "Simplify your {kw}",
+        "The smarter way to {kw}",
+        "Master your {kw}",
+        "{kw} like a pro",
+        "Instant {kw} insights",
+    ]
+
+    def generate_screenshot_captions(
+        self,
+        keywords: List[str],
+        existing_metadata: Dict[str, str],
+        num_captions: int = 10,
+        max_caption_length: int = 70
+    ) -> Dict[str, Any]:
+        """
+        Generate screenshot caption recommendations using complementary keywords.
+
+        Since June 2025, Apple indexes screenshot captions for keyword ranking.
+        This method generates natural captions using keywords that are NOT already
+        present in title, subtitle, or keyword field to maximize keyword coverage.
+
+        Args:
+            keywords: Full list of target keywords to consider
+            existing_metadata: Dict with optional keys 'title', 'subtitle',
+                              'keyword_field' containing current metadata text
+            num_captions: Number of caption recommendations (5-10 recommended)
+            max_caption_length: Maximum caption character count for readability
+
+        Returns:
+            Dict with caption recommendations, keyword coverage analysis,
+            and legibility guidance
+        """
+        # Clamp num_captions to 5-10 range
+        num_captions = max(5, min(10, num_captions))
+
+        # Step 1: Collect all words already used in existing metadata
+        used_words = set()
+        for field in ['title', 'subtitle', 'keyword_field']:
+            value = existing_metadata.get(field, '')
+            if value:
+                # For keyword_field, split on commas; for others, split on whitespace
+                if field == 'keyword_field':
+                    tokens = [w.strip().lower() for w in value.split(',')]
+                else:
+                    tokens = value.lower().split()
+                used_words.update(tokens)
+
+        # Step 2: Filter keywords to only complementary (unused) ones
+        complementary_keywords = []
+        already_covered = []
+        for kw in keywords:
+            kw_lower = kw.lower().strip()
+            kw_words = set(kw_lower.split())
+            # A keyword is "already covered" if ALL its words appear in used metadata
+            if kw_words.issubset(used_words):
+                already_covered.append(kw)
+            else:
+                complementary_keywords.append(kw)
+
+        # Step 3: Generate natural captions from complementary keywords
+        captions = []
+        templates_used = 0
+        for kw in complementary_keywords:
+            if len(captions) >= num_captions:
+                break
+
+            template = self._CAPTION_TEMPLATES[templates_used % len(self._CAPTION_TEMPLATES)]
+            caption_text = template.format(kw=kw.lower())
+
+            # Capitalize first letter
+            caption_text = caption_text[0].upper() + caption_text[1:]
+
+            char_count = len(caption_text)
+
+            # Determine readability tier
+            if char_count <= self.CAPTION_CHAR_GUIDANCE['short']['max_chars']:
+                readability = 'excellent'
+                readability_note = 'Short and punchy - great readability on all devices'
+            elif char_count <= self.CAPTION_CHAR_GUIDANCE['medium']['max_chars']:
+                readability = 'good'
+                readability_note = 'Standard length - readable on most screenshot layouts'
+            elif char_count <= self.CAPTION_CHAR_GUIDANCE['long']['max_chars']:
+                readability = 'acceptable'
+                readability_note = 'Long - consider only for landscape or hero screenshots'
+            else:
+                # Truncate to max and re-evaluate
+                caption_text = caption_text[:max_caption_length]
+                char_count = len(caption_text)
+                readability = 'truncated'
+                readability_note = f'Truncated to {max_caption_length} chars for legibility'
+
+            # Extract which keywords from our list appear in this caption
+            keywords_used = [
+                k for k in complementary_keywords
+                if k.lower() in caption_text.lower()
+            ]
+
+            captions.append({
+                'caption': caption_text,
+                'keywords_used': keywords_used,
+                'char_count': char_count,
+                'readability': readability,
+                'readability_note': readability_note,
+            })
+            templates_used += 1
+
+        # Step 4: Build summary
+        all_keywords_in_captions = set()
+        for c in captions:
+            for k in c['keywords_used']:
+                all_keywords_in_captions.add(k.lower())
+
+        return {
+            'platform': self.platform,
+            'captions': captions,
+            'caption_count': len(captions),
+            'keyword_coverage': {
+                'total_input_keywords': len(keywords),
+                'already_in_metadata': len(already_covered),
+                'complementary_available': len(complementary_keywords),
+                'used_in_captions': len(all_keywords_in_captions),
+                'already_covered_keywords': already_covered,
+                'complementary_keywords': complementary_keywords,
+            },
+            'character_guidance': self.CAPTION_CHAR_GUIDANCE,
+            'best_practices': [
+                'Screenshot captions are indexed by Apple for keyword ranking (June 2025)',
+                'Use keywords NOT already in title/subtitle/keyword field for maximum coverage',
+                'Keep captions natural and readable - avoid keyword stuffing',
+                'Shorter captions (under 40 chars) have best readability on small devices',
+                'Each screenshot should highlight a different feature or keyword theme',
+                'Test caption readability at actual screenshot size before submission',
+                'Captions should complement the visual content of each screenshot',
+            ],
+        }
+
+    # -------------------------------------------------------------------------
+    # Custom Product Page (CPP) Strategy
+    # -------------------------------------------------------------------------
+
+    # Maximum number of Custom Product Pages allowed by Apple
+    MAX_CPP_COUNT = 70
+
+    def generate_cpp_metadata(
+        self,
+        segments: List[str],
+        keywords: List[str],
+        keyword_clusters: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate metadata for Apple Custom Product Pages (CPPs).
+
+        Creates per-segment CPP configurations with tailored title variants,
+        subtitle variants, keyword assignments, and screenshot focus areas.
+        Supports both organic search CPPs and paid acquisition CPPs.
+
+        Args:
+            segments: User segments to create CPPs for
+                     (e.g., ["beginners", "power users", "enterprise"])
+            keywords: Full keyword list to distribute across CPPs
+            keyword_clusters: Optional list of cluster dicts from
+                            keyword_analyzer.cluster_by_intent(). Each cluster
+                            has keys: {name, intent, keywords, keyword_count,
+                            natural_queries, combined_score}
+
+        Returns:
+            Dict with CPP configurations, validation results, and strategy notes
+
+        Raises:
+            ValueError: If total CPP count exceeds 70 (Apple limit)
+        """
+        if self.platform != 'apple':
+            return {
+                'error': 'Custom Product Pages are only available on Apple App Store',
+                'suggestion': 'Use Google Play Store Listing Experiments for A/B testing on Google'
+            }
+
+        # Calculate total CPPs needed: organic + paid variants per segment
+        # Organic: 1 per segment, Paid: 1 per segment (for Apple Search Ads)
+        organic_count = len(segments)
+        paid_count = len(segments)
+        total_cpps = organic_count + paid_count
+
+        if total_cpps > self.MAX_CPP_COUNT:
+            raise ValueError(
+                f"Total CPP count ({total_cpps}) exceeds Apple limit of "
+                f"{self.MAX_CPP_COUNT}. Reduce segments from {len(segments)} "
+                f"to at most {self.MAX_CPP_COUNT // 2}."
+            )
+
+        # Build keyword-to-cluster mapping if clusters are provided
+        keyword_cluster_map = {}
+        if keyword_clusters:
+            for cluster in keyword_clusters:
+                for kw in cluster.get('keywords', []):
+                    keyword_cluster_map[kw.lower()] = {
+                        'cluster_name': cluster.get('name', 'General'),
+                        'intent': cluster.get('intent', 'general'),
+                        'combined_score': cluster.get('combined_score', 0),
+                    }
+
+        # Distribute keywords across segments
+        segment_keywords = self._distribute_keywords_to_segments(
+            segments, keywords, keyword_cluster_map
+        )
+
+        # Generate CPP metadata for each segment
+        organic_cpps = []
+        paid_cpps = []
+
+        for segment in segments:
+            seg_kws = segment_keywords.get(segment, [])
+
+            # --- Organic CPP ---
+            organic_cpp = self._build_cpp_for_segment(
+                segment=segment,
+                assigned_keywords=seg_kws,
+                cpp_type='organic',
+                keyword_cluster_map=keyword_cluster_map,
+            )
+            organic_cpps.append(organic_cpp)
+
+            # --- Paid CPP (Apple Search Ads) ---
+            paid_cpp = self._build_cpp_for_segment(
+                segment=segment,
+                assigned_keywords=seg_kws,
+                cpp_type='paid',
+                keyword_cluster_map=keyword_cluster_map,
+            )
+            paid_cpps.append(paid_cpp)
+
+        # Validation pass
+        validation = self._validate_cpp_metadata(organic_cpps + paid_cpps)
+
+        return {
+            'platform': 'apple',
+            'total_cpps': total_cpps,
+            'max_allowed': self.MAX_CPP_COUNT,
+            'remaining_slots': self.MAX_CPP_COUNT - total_cpps,
+            'organic_cpps': organic_cpps,
+            'paid_cpps': paid_cpps,
+            'segment_keyword_distribution': {
+                seg: kws for seg, kws in segment_keywords.items()
+            },
+            'validation': validation,
+            'strategy_notes': {
+                'organic': (
+                    'Organic CPPs appear in App Store search results based on '
+                    'keyword relevance. Tailor each page to a specific user intent '
+                    'so Apple can match the right page to the right query.'
+                ),
+                'paid': (
+                    'Paid CPPs are used with Apple Search Ads. Each paid CPP should '
+                    'have messaging aligned to the ad keyword theme. Use strong CTAs '
+                    'and social proof specific to the target segment.'
+                ),
+                'best_practices': [
+                    'Create separate CPPs for distinct user segments (beginners vs experts)',
+                    'Align screenshot order with segment priorities',
+                    'Use segment-specific language in title and subtitle variants',
+                    'Test CPP performance monthly and retire underperformers',
+                    'Organic CPPs should focus on different keyword themes',
+                    'Paid CPPs should mirror the ad copy messaging',
+                    'Apple allows up to 70 CPPs - start with 3-5 and expand based on data',
+                    'Each CPP can have unique screenshots, app previews, and promotional text',
+                ],
+            },
+        }
+
+    def _distribute_keywords_to_segments(
+        self,
+        segments: List[str],
+        keywords: List[str],
+        keyword_cluster_map: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, List[str]]:
+        """
+        Distribute keywords across segments using intent clusters when available.
+
+        Strategy:
+        - If keyword_clusters provided, match cluster intents to segments
+        - Otherwise, round-robin distribute keywords evenly
+        """
+        segment_keywords: Dict[str, List[str]] = {seg: [] for seg in segments}
+
+        if keyword_cluster_map:
+            # Group keywords by intent
+            intent_groups: Dict[str, List[str]] = {}
+            unclustered: List[str] = []
+            for kw in keywords:
+                info = keyword_cluster_map.get(kw.lower())
+                if info:
+                    intent = info['intent']
+                    intent_groups.setdefault(intent, []).append(kw)
+                else:
+                    unclustered.append(kw)
+
+            # Map intent groups to segments in order
+            intent_list = list(intent_groups.items())
+            for idx, segment in enumerate(segments):
+                # Assign primary intent cluster
+                if idx < len(intent_list):
+                    _, cluster_kws = intent_list[idx]
+                    segment_keywords[segment].extend(cluster_kws)
+                # Distribute unclustered keywords round-robin
+                for j, kw in enumerate(unclustered):
+                    if j % len(segments) == idx:
+                        segment_keywords[segment].append(kw)
+        else:
+            # Simple round-robin distribution
+            for i, kw in enumerate(keywords):
+                target_segment = segments[i % len(segments)]
+                segment_keywords[target_segment].append(kw)
+
+        return segment_keywords
+
+    def _build_cpp_for_segment(
+        self,
+        segment: str,
+        assigned_keywords: List[str],
+        cpp_type: str,
+        keyword_cluster_map: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Build a single CPP configuration for a segment."""
+        title_limit = self.limits['title']      # 30 chars
+        subtitle_limit = self.limits['subtitle']  # 30 chars
+
+        # Determine primary keyword for this segment
+        primary_kw = assigned_keywords[0] if assigned_keywords else segment
+
+        # Generate title variant
+        if cpp_type == 'organic':
+            title_variant = self._generate_cpp_title(
+                segment, primary_kw, title_limit
+            )
+            subtitle_variant = self._generate_cpp_subtitle(
+                segment, assigned_keywords, subtitle_limit
+            )
+        else:
+            # Paid CPPs use more direct, CTA-oriented language
+            title_variant = self._generate_cpp_title_paid(
+                segment, primary_kw, title_limit
+            )
+            subtitle_variant = self._generate_cpp_subtitle_paid(
+                segment, assigned_keywords, subtitle_limit
+            )
+
+        # Determine screenshot focus based on segment
+        screenshot_focus = self._determine_screenshot_focus(segment, assigned_keywords)
+
+        # Determine dominant intent from assigned keywords
+        dominant_intent = 'general'
+        if keyword_cluster_map and assigned_keywords:
+            intent_counts: Dict[str, int] = {}
+            for kw in assigned_keywords:
+                info = keyword_cluster_map.get(kw.lower())
+                if info:
+                    intent = info['intent']
+                    intent_counts[intent] = intent_counts.get(intent, 0) + 1
+            if intent_counts:
+                dominant_intent = max(intent_counts, key=intent_counts.get)
+
+        return {
+            'segment': segment,
+            'cpp_type': cpp_type,
+            'title_variant': title_variant,
+            'title_char_count': len(title_variant),
+            'title_limit': title_limit,
+            'subtitle_variant': subtitle_variant,
+            'subtitle_char_count': len(subtitle_variant),
+            'subtitle_limit': subtitle_limit,
+            'keyword_assignment': assigned_keywords[:10],  # Top 10 per CPP
+            'keyword_count': min(len(assigned_keywords), 10),
+            'dominant_intent': dominant_intent,
+            'screenshot_focus': screenshot_focus,
+        }
+
+    def _generate_cpp_title(
+        self, segment: str, primary_kw: str, limit: int
+    ) -> str:
+        """Generate an organic CPP title variant within character limit."""
+        # Try keyword-focused title first
+        candidates = [
+            f"{primary_kw.title()}",
+            f"{primary_kw.title()} App",
+            f"Best {primary_kw.title()}",
+            f"{segment.title()} {primary_kw.title()}",
+        ]
+        for candidate in candidates:
+            if len(candidate) <= limit:
+                return candidate
+        # Fallback: truncate primary keyword
+        return primary_kw.title()[:limit]
+
+    def _generate_cpp_title_paid(
+        self, segment: str, primary_kw: str, limit: int
+    ) -> str:
+        """Generate a paid CPP title variant with CTA focus."""
+        candidates = [
+            f"Try {primary_kw.title()} Free",
+            f"Get {primary_kw.title()} Now",
+            f"{primary_kw.title()} - Free",
+            f"Start {primary_kw.title()}",
+        ]
+        for candidate in candidates:
+            if len(candidate) <= limit:
+                return candidate
+        return primary_kw.title()[:limit]
+
+    def _generate_cpp_subtitle(
+        self, segment: str, keywords: List[str], limit: int
+    ) -> str:
+        """Generate an organic CPP subtitle variant."""
+        seg_lower = segment.lower()
+        secondary_kw = keywords[1] if len(keywords) > 1 else ''
+
+        candidates = [
+            f"Made for {seg_lower}",
+            f"Perfect for {seg_lower}",
+            f"{secondary_kw.title()} for {seg_lower}" if secondary_kw else '',
+            f"Built for {seg_lower}",
+        ]
+        candidates = [c for c in candidates if c]
+        for candidate in candidates:
+            if len(candidate) <= limit:
+                return candidate
+        return f"For {seg_lower}"[:limit]
+
+    def _generate_cpp_subtitle_paid(
+        self, segment: str, keywords: List[str], limit: int
+    ) -> str:
+        """Generate a paid CPP subtitle variant with urgency/CTA."""
+        seg_lower = segment.lower()
+        candidates = [
+            f"Join millions of {seg_lower}",
+            f"#1 app for {seg_lower}",
+            f"Loved by {seg_lower}",
+            f"Top rated for {seg_lower}",
+        ]
+        for candidate in candidates:
+            if len(candidate) <= limit:
+                return candidate
+        return f"For {seg_lower}"[:limit]
+
+    def _determine_screenshot_focus(
+        self, segment: str, keywords: List[str]
+    ) -> List[str]:
+        """Determine screenshot focus areas based on segment and keywords."""
+        seg_lower = segment.lower()
+
+        # Map common segment types to recommended screenshot themes
+        segment_screenshot_map = {
+            'beginner': [
+                'Onboarding simplicity',
+                'Getting started flow',
+                'Simple UI overview',
+                'Quick start guide visual',
+            ],
+            'power user': [
+                'Advanced features showcase',
+                'Customization options',
+                'Keyboard shortcuts / power tools',
+                'Workflow automation examples',
+            ],
+            'enterprise': [
+                'Team collaboration features',
+                'Admin dashboard / controls',
+                'Security and compliance badges',
+                'Integration ecosystem',
+            ],
+            'professional': [
+                'Productivity metrics',
+                'Professional templates',
+                'Export and sharing options',
+                'Cross-device sync',
+            ],
+            'student': [
+                'Study tools and features',
+                'Affordable pricing',
+                'Collaboration with classmates',
+                'Offline access capability',
+            ],
+        }
+
+        # Find best matching segment focus
+        for key, focus in segment_screenshot_map.items():
+            if key in seg_lower:
+                return focus
+
+        # Default: generic focus areas incorporating keywords
+        focus = ['Key feature highlight', 'User interface overview']
+        for kw in keywords[:2]:
+            focus.append(f"Showcase {kw.lower()} capability")
+        return focus
+
+    def _validate_cpp_metadata(
+        self, all_cpps: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Validate all CPP metadata against Apple character limits."""
+        errors = []
+        warnings = []
+
+        for cpp in all_cpps:
+            label = f"{cpp['cpp_type'].upper()} CPP [{cpp['segment']}]"
+
+            if cpp['title_char_count'] > cpp['title_limit']:
+                errors.append(
+                    f"{label}: Title exceeds {cpp['title_limit']} chars "
+                    f"({cpp['title_char_count']} chars): '{cpp['title_variant']}'"
+                )
+            if cpp['subtitle_char_count'] > cpp['subtitle_limit']:
+                errors.append(
+                    f"{label}: Subtitle exceeds {cpp['subtitle_limit']} chars "
+                    f"({cpp['subtitle_char_count']} chars): '{cpp['subtitle_variant']}'"
+                )
+            if cpp['keyword_count'] == 0:
+                warnings.append(
+                    f"{label}: No keywords assigned - CPP may not rank for any queries"
+                )
+
+        return {
+            'is_valid': len(errors) == 0,
+            'error_count': len(errors),
+            'warning_count': len(warnings),
+            'errors': errors,
+            'warnings': warnings,
+        }
+
 
 def optimize_app_metadata(
     platform: str,

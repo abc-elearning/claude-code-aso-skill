@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-02-14
+
+### Added
+
+#### Keyword Analysis
+- Semantic keyword clustering with 12 intent categories (navigate, compare, learn, manage, track, plan, create, discover, buy, fix, share, general)
+- Natural language query generation for voice and AI search readiness ("how to...", "best app for...")
+- Combined intent scoring per cluster
+
+#### Metadata Optimization
+- Screenshot caption optimizer generating complementary keyword captions (avoids title/subtitle duplication)
+- Custom Product Page (CPP) strategy planning for up to 70 CPPs with audience segmentation
+- Per-platform caption style (Apple: benefit-focused; Google: feature-focused)
+
+#### Review Analysis
+- `load_from_itunes_rss()` adapter for ingesting real reviews from iTunes RSS feed
+- Integration with iTunesAPI `fetch_reviews()` for automated review fetching
+
+#### iTunes API
+- `fetch_reviews()` method with configurable rate limiting
+- RSS feed parsing for real user review data
+- Retry logic and error handling for API calls
+
+#### ASO Scoring
+- Technical performance scoring: crash rate, ANR rate, battery impact
+- Visual optimization scoring: screenshot captions, CPP count, app preview video
+- Platform-specific weight profiles (Google weights technical metrics higher; Apple weights visual/editorial)
+
+#### Launch Checklist
+- 6 real 2026 compliance deadlines tracked:
+  - Google Age Signals API Restrictions (Jan 1, 2026)
+  - Apple Age Rating Restructuring (Jan 31, 2026)
+  - Google US Billing Policy Changes (Jan 28, 2026)
+  - Google Battery Optimization Compliance (Mar 1, 2026)
+  - Apple Promo Code Discontinuation (Mar 26, 2026)
+  - Apple iOS 26 SDK Requirement (Apr 28, 2026)
+- `check_compliance_deadlines()` with status-aware alerts (passed/warning/upcoming/future)
+- Days-until-deadline and days-from-launch calculations
+
+#### Agent System
+- All 4 agent definitions updated with 2026 platform knowledge
+- Region targeting support across all agents and slash commands
+- Updated compliance awareness in aso-strategist agent
+
+#### Slash Commands
+- `/aso-full-audit` - Added region targeting parameter
+- `/aso-optimize` - Added region targeting parameter
+- `/aso-prelaunch` - Added region targeting parameter
+- `/aso-competitor` - Added region targeting parameter
+
+### Changed
+- ASO scorer now uses platform-specific weight profiles instead of uniform weights
+- Agent definitions reference 2026 compliance deadlines and platform updates
+- Slash commands accept optional region/country parameter for localized analysis
+
+### Technical Details
+- All modules maintain zero external dependencies (Python 3.7+ standard library only)
+- Both skill copies synchronized (app-store-optimization/ and .claude/skills/aso/)
+- All 10 Python modules pass syntax validation
+- End-to-end smoke tests pass for all new features
+
+---
+
 ## [1.0.0] - 2025-11-07
 
 ### 🎉 Initial Release - Production Ready
@@ -146,21 +209,19 @@ First release - no upgrade needed.
 
 ## [Unreleased]
 
-### Planned for v1.1
+### Planned for v1.2
 
 #### Features
-- [ ] iTunes Review API integration for bulk review fetching
 - [ ] Historical tracking database for keyword rankings
 - [ ] Enhanced A/B test analytics with statistical significance
 - [ ] Multi-language support (Spanish, German, French)
-- [ ] Automated screenshot text generation
 - [ ] App preview video script templates
+- [ ] Automated metadata refresh scheduling
 
 #### Improvements
 - [ ] Faster data fetching with concurrent API calls
 - [ ] Enhanced competitor analysis with pricing trends
 - [ ] ASO score improvement recommendations
-- [ ] Automated metadata refresh scheduling
 
 #### Documentation
 - [ ] Video tutorials for common workflows
@@ -184,6 +245,12 @@ First release - no upgrade needed.
 ---
 
 ## Version History
+
+### [1.1.0] - 2026-02-14
+- Region targeting across all commands
+- iTunes Review API, semantic keyword clustering, screenshot captions, CPP strategy
+- Technical/visual scoring, platform-specific weights, 2026 compliance deadlines
+- All agents and slash commands updated for 2026
 
 ### [1.0.0] - 2025-11-07
 - Initial production release
@@ -223,4 +290,4 @@ For questions about this changelog:
 
 **Maintained by:** Alireza Rezvani
 **License:** MIT
-**Last Updated:** November 7, 2025
+**Last Updated:** February 14, 2026

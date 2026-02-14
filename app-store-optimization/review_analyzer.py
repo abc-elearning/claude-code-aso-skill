@@ -45,6 +45,36 @@ class ReviewAnalyzer:
         self.reviews = []
         self.analysis_cache = {}
 
+    def load_from_itunes_rss(
+        self,
+        rss_reviews: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Convert reviews from iTunes RSS JSON format to ReviewAnalyzer format.
+
+        Args:
+            rss_reviews: Reviews from iTunesAPI.fetch_reviews() with keys:
+                         {author, rating, title, body, version, date}
+
+        Returns:
+            List of reviews in ReviewAnalyzer format with keys:
+            {id, text, rating, date, title, author, version}
+        """
+        converted = []
+        for i, review in enumerate(rss_reviews):
+            converted.append({
+                'id': review.get('id', str(i)),
+                'text': review.get('body', ''),
+                'rating': review.get('rating', 0),
+                'date': review.get('date', ''),
+                'title': review.get('title', ''),
+                'author': review.get('author', 'Unknown'),
+                'version': review.get('version', ''),
+            })
+
+        self.reviews = converted
+        return converted
+
     def analyze_sentiment(
         self,
         reviews: List[Dict[str, Any]]
